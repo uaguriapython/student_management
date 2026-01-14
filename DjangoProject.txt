@@ -1,0 +1,598 @@
+============
+SETTINGS.py
+============
+from pathlib import Path
+import os   # Invoking the OS Module
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'student.apps.StudentConfig',   # Register the AppCOnfig
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR,'templates')],   # add template folder's path to " 'DIRS': [], "
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+STATIC_URL = '/static/' # add '/' in front of 'static/'
+
+STATICFILES_DIRS = [        # add static folder's path 
+    os.path.join(BASE_DIR, 'static'),
+]
+
+
+============
+URLS.py
+============
+# 1. urls.py created manually
+# 2. Total content copy from Django Documentation
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path("", views.home, name="student_home"),
+    path("add/", views.add_student, name="add_student"),
+    path("list/", views.view_student_list, name="view_student_list"),
+    path("lists/", views.student_lists, name="student_lists"),
+    path("details/", views.view_student_details, name="view_student_details"),
+    path("view_student_name/", views.view_student_name, name="view_student_name"),
+    path("search/", views.search, name="search"),
+    path("edit/<str:student_id>", views.edit_student, name="edit_student"),
+    path("delete/<str:student_id>", views.delete_student, name="delete_student"),
+]
+
+
+============
+VIEWS.py
+============
+from django.shortcuts import render,redirect
+from django.http import HttpResponse,HttpRequest,JsonResponse    # invoke HttpResponse (ALL)
+
+# student_list = []   # Global Variable
+student_list = [
+    {"student_id": "1","student_name": "Akinchan","student_email": "a@gmail.com","student_phone": "8796543215","student_dob": "2025-12-25","student_class": "12","student_address": "Digha"},
+    {"student_id": "2","student_name": "Rahul","student_email": "r@gmail.com","student_phone": "8796543215","student_dob": "2024-12-25","student_class": "11","student_address": "Digha"},
+    {"student_id": "3","student_name": "Goutam","student_email": "g@gmail.com","student_phone": "8796543215","student_dob": "2023-12-25","student_class": "10","student_address": "Digha"}
+    ]
+
+class_range = list(['1','2','3','4','5','6','7','8','9','10','11','12'])
+# class_range = list(range(1,11))
+
+# Create your views here.
+# def index(request): # Manually created
+#     return HttpResponse("Hello, world. You're at the polls index.")
+
+# This is for displaying the dashboard without using the app
+
+def home(request:HttpRequest)->HttpResponse:
+    print('FBV:Student Home')
+    return render(request, "student/home.html")
+
+def add_student(request):
+    print('FBV: Add Student')
+    global student_list
+    if request.method == 'POST':
+        student_id = request.POST.get("student_id")
+        student_name = request.POST.get("student_name")
+        student_email = request.POST.get("student_email")
+        student_phone = request.POST.get("student_phone")
+        student_dob = request.POST.get("student_dob")
+        student_class = request.POST.get("student_class")
+        student_address = request.POST.get("student_address")
+
+        if not student_id or not student_name or not student_email or not student_phone or not student_dob or not student_class or not student_address:
+            return JsonResponse({
+                "status":"error",
+                "msg": "All fields are required..."
+            })            
+
+        # Validate Unique Email
+        if any(student.get('student_email') == student_email and student.get('student_id') != student_id for student in student_list):
+            return JsonResponse({
+                "status":"error",
+                "msg": "Email id already exist..."
+            })            
+
+        # Update Student
+        for student in student_list:
+            if student.get('student_id') == student_id:
+                update_student_info = {
+                    "student_id": student_id,
+                    "student_name": student_name,
+                    "student_email": student_email,
+                    "student_phone": student_phone,
+                    "student_dob": student_dob,
+                    "student_class": student_class,
+                    "student_address": student_address,
+                }
+                student.update(update_student_info)
+                return JsonResponse({
+                    "status": "success",
+                    "msg": "Student updated successfully",
+                    "last_id": student_id
+                })
+
+        # Create dictionary for student info.
+        student_info = {
+            "student_id": student_id,
+            "student_name": student_name,
+            "student_email": student_email,
+            "student_phone": student_phone,
+            "student_dob": student_dob,
+            "student_class": student_class,
+            "student_address": student_address,
+        }
+
+        # Add dictionary into list
+        student_list.append(student_info)
+        last_record = student_list[-1]
+        last_id = int(last_record.get('student_id'))
+
+        return JsonResponse({
+                "status": "success",
+                "msg": "Student added successfully!",
+                "last_id": last_id + 1,
+                "class_range": class_range
+            })
+    
+    if student_list: 
+        last_record = student_list[-1]
+        last_id = int(last_record.get('student_id'))
+        return render(request, 'student/add_student.html',{'last_id':last_id + 1,'class_range': class_range})
+    else:
+        return render(request, 'student/add_student.html',{'last_id':1,'class_range': class_range})
+
+def view_student_list(request):
+    print('FBV: View Student List')
+    return render(request, 'student/student_list.html',{'student_list':student_list})
+
+def view_student_name(request):
+    print('FBV: View Student Name')
+    student_name_list = [student.get('student_name') for student in student_list]
+    # print(student_name_list)
+    return render(request, 'student/student_name_list.html',{'student_name_list':student_name_list})
+
+def search(request):
+    global student_list
+    print('FBV: Search function')
+    search_element = request.POST.get("search_element")
+    print(f'FBV: Search element: {search_element}')
+    
+    if not search_element:
+        return JsonResponse({
+            "status":"error",
+            "msg": "Search element required..."
+        })            
+   
+    if not student_list:
+        return JsonResponse({
+            "status":"error",
+            "msg": "No student record found..."
+        })            
+    print(student_list)
+    if search_element.isdigit():
+        # Search by ID
+        for student in student_list:
+            print(f"FBV: Search isdigit: {student.get('student_id')}")
+            if student.get('student_id') == search_element:
+                return JsonResponse({
+                    "status": "success",
+                    "msg": "Student ID Found.",
+                    "result": student
+                })
+        else:
+            return JsonResponse({
+                "status":"error",
+                "msg": "Student ID not found..."
+            })
+    else:
+        # Search by Email
+        for student in student_list:
+            print(f'FBV: Search email: {search_element}')
+            if student.get('student_email') == search_element:
+                return JsonResponse({
+                    "status": "success",
+                    "msg": "Email Found",
+                    "result": student,
+                })
+        else:
+            return JsonResponse({
+                "status":"error",
+                "msg": "Email not found..."
+            })
+        
+def edit_student(request,student_id):
+    student_info = {}
+
+    for student in student_list:
+        if student.get('student_id') == student_id:
+            student_info = student
+            break
+    return render(request, "student/add_student.html",{
+        "student_info": student_info,
+        "is_edit": True,
+        "class_range": class_range
+    })
+
+def student_lists(request):
+    return render(request, 'student/student_details.html',{'student_list':student_list})
+
+def view_student_details(request):
+    print('FBV: Student Details')
+    global student_list
+    student_id = request.GET.get("student_id")
+    print(student_id)
+    
+    if not student_id:
+        return JsonResponse({
+            "status":"error",
+            "msg": "Please Select a Student..."
+        })  
+    student_info = {}
+    for student in student_list:
+        if student.get('student_id') == student_id:
+            student_info = student
+            break
+    else:
+        return JsonResponse({
+            "status": "error",
+            "msg": "Student Not Found...",
+        }) 
+
+    return JsonResponse({
+            "status": "success",
+            "msg": "Student Details Found.",
+            "result": student_info,
+        }) 
+
+def delete_student(request,student_id):
+    global student_list
+    print('FBV: Delete student')
+    for student in student_list:
+        if student.get('student_id') == student_id:
+            student_list.remove(student)
+            # print('Student delete successfully...')
+    
+    return render(request, 'student/student_list.html',{'student_list':student_list,'message':'Record deleted successfully'})
+            
+            # return redirect("view_student_list")
+            # return JsonResponse({
+            #     "status": "success",
+            #     "msg": "Student deleted successfully!"
+            # })
+    # else:
+    #     print('Student id not found...')
+
+
+============
+ajax.js
+============
+$(document).ready(function(){
+    console.log('AJAX Ready...');
+
+    $('#btn_register').click(function (event){
+        event.preventDefault();
+        const student_id = $('#student_id').val();
+        const student_name = $('#student_name').val();
+        const student_email = $('#student_email').val();
+        const student_phone = $('#student_phone').val();
+        const student_dob = $('#student_dob').val();
+        const student_class = $('#student_class').val();
+        const student_address = $('#student_address').val();
+        const csrfmiddlewaretoken = $('input[name="csrfmiddlewaretoken"]').val();
+
+        console.log(student_id,student_name,student_email,student_phone,student_dob,student_class,student_address)
+
+        $.ajax({
+            url: '/student/add/',
+            method: 'POST',
+            data: {
+                student_id: student_id,
+                student_name: student_name,
+                student_email: student_email,
+                student_phone: student_phone,
+                student_dob: student_dob,
+                student_class: student_class,
+                student_address: student_address,
+                csrfmiddlewaretoken: csrfmiddlewaretoken,
+            },
+
+            success: function(response){
+                if (response.status === 'error'){
+                    $('#msg').html(`<div class="alert alert-danger">${response.msg}</div>`);
+                }
+
+                if (response.status === 'success'){
+                    console.log(response.last_id)
+                    $('#msg').html(`<div class="alert alert-success">${response.msg}</div>`);
+                    $('#add_student_form')[0].reset();
+                    $('#student_id').val(response.last_id);
+                }
+            },
+
+            error: function(){
+                alert('Error: Something went wrong with AJAX.');
+            }
+        });
+    });
+
+    $('#dtn_search').click(function (event){
+        event.preventDefault();
+        const search_element = $('#search_element').val();
+        const csrfmiddlewaretoken = $('input[name="csrfmiddlewaretoken"]').val();
+        console.log(search_element)
+
+        $.ajax({
+            url: '/student/search/',
+            method: 'POST',
+            data: {
+                search_element: search_element,
+                csrfmiddlewaretoken: csrfmiddlewaretoken,
+            },
+
+            success: function(response){
+                if (response.status === 'error'){
+                    $('#result_table').html(`<div class="alert alert-danger" role="alert">${response.msg}</div>`);
+                    $('#search_element').val('');
+                }
+
+                if (response.status === 'success'){
+                    console.log(response.msg)
+                    console.log(response.result)
+                    console.log(response.result.student_email)
+                                        
+                    $('#result_table').html(`
+                        <tr><th scope="row">ID</th><td>${response.result.student_id}</td></tr>
+                        <tr><th scope="row">Name</th><td>${response.result.student_name}</td></tr>
+                        <tr><th scope="row">Email</th><td>${response.result.student_email}</td></tr>
+                        <tr><th scope="row">Phone</th><td>${response.result.student_phone}</td></tr>
+                        <tr><th scope="row">DOB</th><td>${response.result.student_dob}</td></tr>
+                        <tr><th scope="row">Class</th><td>${response.result.student_class}</td></tr>
+                        <tr><th scope="row">Address</th><td>${response.result.student_address}</td></tr>
+                        `);
+                    $('#search_element').val('');
+                }
+            },
+
+            error: function(){
+                alert('Error: Something went wrong with AJAX.');
+            }
+        });
+    });
+  
+    $('#student_id').on('change', function (event){
+        event.preventDefault();
+        const student_id = $('#student_id').val();
+        console.log(student_id)
+
+        $.ajax({
+            url: '/student/details/',
+            method: 'GET',
+            data: {
+                student_id: student_id,
+            },
+
+            success: function(response){
+                if (response.status === 'error'){
+                    $('#student_details_heading').hide();
+                    $('#hr_tag').hide();
+                    $('#student_details').html(`<div class="alert alert-danger" role="alert">${response.msg}</div>`);
+                }
+
+                if (response.status === 'success'){  
+                    console.log(response.result)      
+                    $('#student_details_heading').show();            
+                    $('#student_details_heading').text(`Student Details`);
+                    $('#hr_tag').show();
+                    $('#student_details').html(`
+                        <tr><th scope="row">ID</th><td>${response.result.student_id}</td></tr>
+                        <tr><th scope="row">Name</th><td>${response.result.student_name}</td></tr>
+                        <tr><th scope="row">Email</th><td>${response.result.student_email}</td></tr>
+                        <tr><th scope="row">Phone</th><td>${response.result.student_phone}</td></tr>
+                        <tr><th scope="row">DOB</th><td>${response.result.student_dob}</td></tr>
+                        <tr><th scope="row">Class</th><td>${response.result.student_class}</td></tr>
+                        <tr><th scope="row">Address</th><td>${response.result.student_address}</td></tr>
+                        `);
+                }
+            },
+
+            error: function(){
+                alert('Error: Something went wrong with AJAX.');
+            }
+        });
+    });
+});
+
+
+
+============
+index.html
+============
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %} Django & Ajax {% endblock title %}</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="{% static 'js/ajax_script.js' %}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+</head>
+
+<body>
+    {% include 'include/navbar.html' %}
+    {% block body %}
+
+    {% endblock body %}
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous">
+    </script>
+</body>
+
+</html>
+
+============
+add.html
+============
+{% extends 'index.html' %}
+
+{% block title %} Add Student {% endblock title %}
+
+{% block body %}
+<div class="container mt-5 px-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="shadow p-3 bg-body rounded">
+                <h3 style="text-align: center; margin: 5px;">{% if is_edit %}Update Student{% else %}Add Student{% endif %}</h3>
+                <hr style="height: 2px; background-color: #b5b8b5; border: none;">
+                <form class="row g-3 m-3" id="add_student_form">
+                    {% csrf_token %}
+                    <div class="col-md-6">
+                        <label for="student_id" class="form-label">Student ID</label>
+                        <input type="text" class="form-control" id="student_id" disabled value="{% if is_edit %}{{student_info.student_id}}{% else %}{{last_id}}{% endif %}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="student_name" class="form-label">Student Name</label>
+                        <input type="text" class="form-control" id="student_name" value="{{student_info.student_name|default:''}}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="student_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="student_email" value="{{student_info.student_email|default:''}}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="student_phone" class="form-label">Phone no.</label>
+                        <input type="text" class="form-control" id="student_phone" value="{{student_info.student_phone|default:''}}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="student_dob" class="form-label">Date of Birth</label>
+                        <input type="date" class="form-control" id="student_dob" value="{{student_info.student_dob|default:''}}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="student_class" class="form-label">Class</label>
+                        <select id="student_class" name="student_class" class="form-select">
+                        <option value="" disabled {% if not is_edit %}selected{% endif %}>
+                            Choose class...
+                        </option>
+
+                        {% for class in class_range %}
+                            <option
+                                {% if is_edit and class == student_info.student_class %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ class }}
+                            </option>
+                        {% endfor %}
+                    </select>
+ 
+                    </div>
+                    <div class="col-12">
+                        <label for="student_address" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="student_address" placeholder="1234 Main St" value="{{student_info.student_address|default:''}}">
+                    </div>
+                    <div class="col-12 text-center">
+                        <button type="submit" class="btn btn-primary" id="btn_register">{% if is_edit %}Update{% else %}Add{% endif %}</button>
+                    </div>
+                </form>
+                <div class="col-12" id="msg"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock body %}
+
+============
+navbar.html
+============
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'dashboard' %}">DJANGO</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="{% url 'dashboard' %}">Dashboard</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="{% url 'student_home' %}" role="button"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                        Student
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'student_home' %}">Student</a></li>
+                        <li><a class="dropdown-item" href="{% url 'add_student' %}">Add Student</a></li>
+                        <li><a class="dropdown-item" href="{% url 'student_lists' %}">View Student Details</a></li>
+                        <li><a class="dropdown-item" href="{% url 'view_student_list' %}">View Student List</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'view_student_name' %}">View only student's name</a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled">Teacher</a>
+                </li>
+            </ul>
+            <form class="d-flex" id="search_form" role="search">
+                {% csrf_token %}
+                <input class="form-control me-2" id="search_element" type="search" placeholder="Search by ID or Email"
+                    aria-label="Search">
+                <button class="btn btn-success" id="dtn_search" type="submit" data-bs-toggle="modal"
+                    data-bs-target="#staticBackdrop">Search</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Button trigger modal -->
+
+<!-- Modal -->
+<div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="staticBackdropLabel">Search Result</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="search_result">
+                <table class="table">
+                    <tbody id="result_table">
+                        
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+ <a href="{% url 'edit_student' student.student_id %}" class="btn btn-sm btn-primary">Edit</a>
+ <a href="{% url 'delete_student' student.student_id %}" class="btn btn-sm btn-danger">Delete</a>
